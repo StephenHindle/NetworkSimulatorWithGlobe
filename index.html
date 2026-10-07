@@ -215,6 +215,20 @@
   #bizmenu button:hover,#bizmenu button:focus-visible{background:rgba(255,179,71,.14);border-color:rgba(255,179,71,.45);outline:none}
   #bizmenu button span{display:block;font-size:10.5px;color:var(--mute);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   #bizmenu .bm-empty{padding:8px;color:var(--mute);font-size:12px}
+  /* welcome popup: a see-through panel over the spinning globe */
+  #welcome{position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;padding:16px;pointer-events:none}
+  #welcome.off{display:none}
+  #welcome .wl-card{pointer-events:auto;width:min(560px,100%);max-height:calc(100vh - 32px);overflow:auto;padding:24px 26px 20px;border-radius:16px;
+    background:rgba(4,12,24,.42);border:1px solid rgba(57,208,255,.45);box-shadow:0 0 40px -10px rgba(57,208,255,.6);
+    -webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);color:#ffffff;text-shadow:0 1px 3px rgba(0,0,0,.85)}
+  #welcome h1{margin:0 0 14px;font-size:22px;line-height:1.25;color:#ffffff;font-weight:700}
+  #welcome h2{margin:14px 0 6px;font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:#7fe3ff;font-weight:700}
+  #welcome ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px;font-size:14.5px;line-height:1.5}
+  #welcome p{margin:0;font-size:14.5px;line-height:1.5}
+  #welcome b{color:#ffe2b8}
+  #welcome .wl-row{display:flex;justify-content:flex-end;margin-top:18px}
+  #welcome #wl-ok{min-width:96px;padding:8px 18px;font-size:14px;background:#ffb347;border-color:#ffb347;color:#1d1305;font-weight:700;text-shadow:none}
+  #welcome #wl-ok:hover{filter:brightness(1.08)}
 </style>
 </head>
 <body>
@@ -241,6 +255,20 @@
     </div>
     <button id="zout" title="Zoom out" aria-label="Zoom out">−</button>
     <div id="zlab">ZOOM</div>
+  </div>
+  <div id="welcome" role="dialog" aria-modal="true" aria-labelledby="wl-title">
+    <div class="wl-card">
+      <h1 id="wl-title">Welcome to the Global Network Simulator</h1>
+      <h2>Build your first network</h2>
+      <ol>
+        <li>Rotate the globe and zoom in to one of the labelled locations on the map. Double-click to zoom in quickly.</li>
+        <li>When the zoom reaches <b>90%</b>, a <b>Create Business Here</b> button appears. Select it, then select a point on the map.</li>
+        <li>Enter a business name and choose either <b>Public address block</b> or <b>ISP assigned</b>.</li>
+      </ol>
+      <h2>Start building</h2>
+      <p>The simulator opens and you can begin your build.</p>
+      <div class="wl-row"><button id="wl-ok" class="btn" type="button">OK</button></div>
+    </div>
   </div>
   <div id="hint">Drag to spin the globe and scroll to zoom where you point</div>
   <div id="reticle" class="off"><i></i></div>
@@ -273,7 +301,7 @@
     <input id="bizname" maxlength="40" placeholder="Name your business" spellcheck="false">
     <div class="fl">How should the ISP connect you?</div>
     <label class="opt"><input type="radio" name="bizmode" value="A" checked><span><b>Public address block</b> (recommended)<small>The ISP router hands you a /29 block of public addresses. You build your own edge router with NAT and DHCP.</small></span></label>
-    <label class="opt"><input type="radio" name="bizmode" value="B"><span><b>ISP does it for you</b><small>The ISP router gives out 192.168.1.0/24 addresses with DHCP and does NAT. Plug a switch straight into Gig0/0.</small></span></label>
+    <label class="opt"><input type="radio" name="bizmode" value="B"><span><b>ISP assigned</b><small>The ISP router gives out 192.168.1.0/24 addresses with DHCP and does NAT. Plug a switch straight into Gig0/0.</small></span></label>
     <div id="bizerr" class="err off"></div>
     <div class="row"><button type="button" class="btn" id="bizcancel">Cancel</button><button type="submit" class="btn go">Create business</button></div>
   </form>
@@ -746,8 +774,11 @@ const track=$('track'), thumb=$('thumb'), fill=$('fill');
 })();
 let beginTw=null, loopOn=false;
 let autoSpin=true;   // the globe turns slowly when the app opens, until the user takes control
-const stopSpin=()=>{ autoSpin=false; };
-addEventListener('pointerdown',stopSpin,true); addEventListener('wheel',stopSpin,{capture:true,passive:true}); addEventListener('keydown',stopSpin,true);
+// it keeps turning behind the welcome popup: only taking hold of the globe itself (or the zoom controls) stops it
+const stopSpin=e=>{ if(e&&e.target&&e.target.closest&&e.target.closest('#welcome')) return; autoSpin=false; };
+glc.addEventListener('pointerdown',stopSpin,true); addEventListener('wheel',stopSpin,{capture:true,passive:true});
+['zoom','track'].forEach(id=>{ const el=$(id); if(el) el.addEventListener('pointerdown',stopSpin,true); });
+addEventListener('keydown',e=>{ if(/^(Arrow|\+|-|=|_)/.test(e.key)) stopSpin(e); },true);
 const canSteer=()=>mode==='loop'&&view==='globe';
 const wrapLon=l=>((l+180)%360+360)%360-180;
 function setAltTarget(a){ camFly=null; camT.alt=clamp(a,ALT_MIN,ALT_MAX); }
@@ -2384,6 +2415,15 @@ function flightInfo(pk){
   return Object.assign(d,{name:String(t||'Packet'),proto:'IP',noPorts:true,tag:'L3'});
 }
 window.__packetGlobe={NODES,placeStatusAt,landAt,cam,camT,flyTo,BIZ,openSim,showGlobe,findDest,graphPath,get view(){return view;},get mode(){return mode;},get flights(){return flights;},get hits(){return pktHits;},get paused(){return gPaused;},setGlobePause,stepGlobe};
+
+/* ---------- welcome popup ---------- */
+(function(){
+  const w=$('welcome'), ok=$('wl-ok'); if(!w||!ok) return;
+  const close=()=>{ w.classList.add('off'); };
+  ok.addEventListener('click',close);
+  addEventListener('keydown',e=>{ if(!w.classList.contains('off')&&(e.key==='Escape'||e.key==='Enter')){ e.preventDefault(); close(); } },true);
+  setTimeout(()=>{ try{ ok.focus({preventScroll:true}); }catch(e){} },300);
+})();
 
 /* ---------- main loop ---------- */
 let last=performance.now(), time=0;
