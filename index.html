@@ -274,7 +274,7 @@
       <h1 id="wl-title">Welcome to the Global Network Simulator</h1>
       <h2>Build your first network</h2>
       <ol>
-        <li>Rotate the globe and zoom in to a <b>capital city ringed in gold</b>. Those are the locations with an ISP core you can connect to, and they show a grid of city streets as you get closer. Anywhere on land in Australia also works. Double-click to zoom in quickly.</li>
+        <li>Rotate the globe and zoom in to a <b>capital city shown in orange</b> (blue circles are connector routers you cannot build at). Those are the locations with an ISP core you can connect to, and they show a grid of city streets as you get closer. Anywhere on land in Australia also works. Double-click to zoom in quickly.</li>
         <li>When the zoom reaches <b>90%</b>, a <b>Create Business Here</b> button appears. Select it, then select a point on the map near the capital. The hint at the bottom names the nearest capital if you are too far from one.</li>
         <li>Enter a business name and choose either <b>Public address block</b> or <b>ISP assigned</b>.</li>
       </ol>
@@ -1230,19 +1230,19 @@ const ARCS=[];
 
 /* ---------- overlay drawing ---------- */
 function rr(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
-function drawRouter(x,y,s,col,flash,origin){
+function drawRouter(x,y,s,col,flash,origin,build){
   ctx.save(); ctx.translate(x,y);
   if(flash>0){ ctx.strokeStyle=col; ctx.globalAlpha*=flash; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(0,0,s*(1.2+(1-flash)*1.8),0,7); ctx.stroke(); ctx.globalAlpha/=flash; }
-  ctx.shadowColor='#39d0ff'; ctx.shadowBlur=origin?16:8;
-  ctx.fillStyle='#071a2c'; ctx.strokeStyle=origin?'#9ff0ff':'#39d0ff'; ctx.lineWidth=Math.max(1.2,s*0.12);
+  ctx.shadowColor=build?'#ff8c1a':'#39d0ff'; ctx.shadowBlur=origin?16:8;
+  ctx.fillStyle=build?'#2c1504':'#071a2c'; ctx.strokeStyle=build?'#ff8c1a':origin?'#9ff0ff':'#39d0ff'; ctx.lineWidth=Math.max(1.2,s*0.12);
   ctx.beginPath(); ctx.arc(0,0,s,0,7); ctx.fill(); ctx.stroke(); ctx.shadowBlur=0;
   if(s>6){ // router glyph: four arrows
-    ctx.strokeStyle=ctx.fillStyle=origin?'#c8f8ff':'#8fe6ff'; ctx.lineWidth=Math.max(1,s*0.1);
+    ctx.strokeStyle=ctx.fillStyle=build?'#ffc07a':origin?'#c8f8ff':'#8fe6ff'; ctx.lineWidth=Math.max(1,s*0.1);
     const a=s*0.62,h=s*0.22;
     for(let k=0;k<4;k++){ ctx.save(); ctx.rotate(k*Math.PI/2); const inw=k%2===0;
       ctx.beginPath(); ctx.moveTo(s*0.14,0); ctx.lineTo(a,0); ctx.stroke();
       ctx.beginPath(); if(inw){ctx.moveTo(s*0.14,0);ctx.lineTo(s*0.14+h,-h);ctx.lineTo(s*0.14+h,h);} else {ctx.moveTo(a+1,0);ctx.lineTo(a+1-h,-h);ctx.lineTo(a+1-h,h);} ctx.closePath(); ctx.fill(); ctx.restore(); }
-  } else { ctx.fillStyle='#8fe6ff'; ctx.beginPath(); ctx.arc(0,0,Math.max(1,s*0.35),0,7); ctx.fill(); }
+  } else { ctx.fillStyle=build?'#ffc07a':'#8fe6ff'; ctx.beginPath(); ctx.arc(0,0,Math.max(1,s*0.35),0,7); ctx.fill(); }
   ctx.restore();
 }
 function drawClient(x,y,s,flash,col){
@@ -1375,14 +1375,14 @@ function drawOverlay(time,netA,decoA,packets,O){
   for(const d of drawList){
     ctx.globalAlpha=(d.kind==='group'?d.nodes.some(n=>n.wld||n.gw):(d.n.wld||d.n.gw))?wA:netA; if(ctx.globalAlpha<=0.01) continue;
     if(d.kind==='group'){ const fl=Math.max(...d.nodes.map(n=>n.flash)); const fc=d.nodes.reduce((a,n)=>n.flash>a.f?{f:n.flash,c:n.fc}:a,{f:-1,c:'#39d0ff'}).c;
-      drawRouter(d.x,d.y,Math.max(5,nodeS),fc,fl,false); }
+      drawRouter(d.x,d.y,Math.max(5,nodeS),fc,fl,false,d.nodes.some(n=>n.buildable)); }
     else { const n=d.n; if(!onScreen(n.scr,60)) continue;
       if(n.type==='client') drawClient(n.scr.x,n.scr.y,nodeS*0.95,n.flash,n.fc);
       else if(n.type==='server') drawServer(n.scr.x,n.scr.y,nodeS*0.95,n.flash,n.fc);
       else if(n.type==='dns') drawServer(n.scr.x,n.scr.y,nodeS*0.95,n.flash,n.fc,'#8aa8ff');
       else if(n.type==='business') drawBiz(n.scr.x,n.scr.y,Math.max(6,nodeS*1.05),n.flash,n.fc);
-      else drawRouter(n.scr.x,n.scr.y,nodeS,n.fc,n.flash,n.origin);
-      if(n.buildable){ ctx.save(); ctx.strokeStyle='rgba(255,179,71,.85)'; ctx.lineWidth=2; ctx.shadowColor='#ffb347'; ctx.shadowBlur=9; ctx.beginPath(); ctx.arc(n.scr.x,n.scr.y,nodeS*1.75,0,7); ctx.stroke(); ctx.restore(); } }
+      else drawRouter(n.scr.x,n.scr.y,nodeS,n.fc,n.flash,n.origin,n.buildable);
+      if(n.buildable){ ctx.save(); ctx.strokeStyle='rgba(255,140,26,.85)'; ctx.lineWidth=2; ctx.shadowColor='#ff8c1a'; ctx.shadowBlur=9; ctx.beginPath(); ctx.arc(n.scr.x,n.scr.y,nodeS*1.75,0,7); ctx.stroke(); ctx.restore(); } }
     labelRects.push({x:(d.x||d.n.scr.x)-nodeS,y:(d.y||d.n.scr.y)-nodeS,w:nodeS*2,h:nodeS*2});
   }
   ctx.globalAlpha=1;
@@ -1708,7 +1708,7 @@ const CORE_CITY={3:'Adelaide',5:'Melbourne',7:'Canberra',8:'Sydney',[PER]:'Perth
 WORLD_CAPS.forEach(([c])=>{ CORE_CITY[WR[c]]=c; });
 // businesses connect to the nearest ISP core: an Australian capital, or a world capital's core router
 const WORLD_CORES=WORLD_CAPS.map(([c])=>WR[c]), CORES=CAPITALS.concat(WORLD_CORES);
-CORES.forEach(i=>{ if(NODES[i]) NODES[i].buildable=true; });   // the capitals a business can attach to: ringed in gold on the map
+CORES.forEach(i=>{ if(NODES[i]) NODES[i].buildable=true; });   // the capitals a business can attach to: shown in orange on the map
 const WORLD_KM=400;   // outside Australia a business must be this close to a world capital
 const isWorldCore=i=>WORLD_CORES.includes(i);
 const bizDomain=b=>b&&b.world?'example.com':'example.com.au';
@@ -2580,7 +2580,7 @@ function frameLoop(now){
     else if(!st.ok&&/land/i.test(st.msg||'')) buildMsg='Move over land to build a business here.';
   }
   const hintTxt=gPaused&&view==='globe'?`Paused. ${watch?watch.biz.name+'’s simulator is paused too, so nothing times out. ':''}Press Play to carry on.`:watch&&view==='globe'?`Following packets from ${watch.biz.name}. The simulator comes back when the last reply arrives. Drag the globe to stay here.`:buildMsg?buildMsg:!idle()||cb?'':onlineMsgT>0?'Your laptop is online. Type a web address.'
-    :(zT<0.03&&!beginTw&&!BIZ.some(b=>!b.dead))?'Drag to spin the globe and scroll to zoom where you point. Zoom to 90% over a gold-ringed capital, or anywhere in Australia, to create a business.'
+    :(zT<0.03&&!beginTw&&!BIZ.some(b=>!b.dead))?'Drag to spin the globe and scroll to zoom where you point. Zoom to 90% over an orange capital, or anywhere in Australia, to create a business.'
     :(pct>=80&&pct<90)?'Keep zooming: at 90% you can create a business here':'';
   if(hintTxt) hint.textContent=hintTxt;
   thumb.style.top=((1-zT)*100)+'%'; fill.style.height=(zT*100)+'%';
